@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>⏱ FocusRing</title>
+<style>
+  :root{
+    --bg:#0a0b12;--surface:#11121d;--card:#161827;--border:#222438;
+    --ink:#e7e9f5;--muted:#666b8a;
+    --work:#f4654a;--short:#22c3a6;--long:#7c8cf8;
+    --r:14px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:radial-gradient(circle at 50% -10%, #161a30 0%, var(--bg) 60%);
+    color:var(--ink);min-height:100vh;font-family:'Segoe UI',system-ui,sans-serif;
+  }
+  ::-webkit-scrollbar{width:6px;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+  .wrap{max-width:980px;margin:0 auto;padding:28px 20px 60px;}
+
+  header{display:flex;align-items:center;gap:12px;margin-bottom:28px;}
+  .logo{
+    width:40px;height:40px;border-radius:11px;
+    background:linear-gradient(135deg,var(--work),#fbbf24);
+    display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;
+    box-shadow:0 0 18px rgba(244,101,74,0.3);
+  }
+  header h1{font-size:1.05rem;font-weight:700;}
+  header p{font-size:0.7rem;color:var(--muted);margin-top:2px;}
+  .mute-btn{
+    margin-left:auto;background:var(--card);border:1px solid var(--border);border-radius:10px;
+    width:36px;height:36px;cursor:pointer;color:var(--muted);font-size:0.95rem;
+    display:flex;align-items:center;justify-content:center;transition:all .2s;
+  }
+  .mute-btn:hover{border-color:var(--work);color:var(--work);}
+
+  .layout{display:grid;grid-template-columns:1fr 320px;gap:24px;}
+  @media(max-width:800px){.layout{grid-template-columns:1fr;}}
+
+  /* ── Timer Card ── */
+  .timer-card{
+    background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+    padding:36px 24px;display:flex;flex-direction:column;align-items:center;
+  }
+  .phase-tabs{display:flex;gap:8px;margin-bottom:28px;}
+  .phase-tab{
+    background:var(--surface);border:1px solid var(--border);border-radius:20px;
+    padding:6px 16px;font-size:0.72rem;color:var(--muted);cursor:pointer;transition:all .2s;
+  }
+  .phase-tab.active.work{border-color:var(--work);color:var(--work);background:rgba(244,101,74,0.1);}
+  .phase-tab.active.short{border-color:var(--short);color:var(--short);background:rgba(34,195,166,0.1);}
+  .phase-tab.active.long{border-color:var(--long);color:var(--long);background:rgba(124,140,248,0.1);}
+
+  .ring-wrap{position:relative;width:280px;height:280px;}
+  .ring-wrap svg{transform:rotate(-90deg);}
+  .ring-bg{fill:none;stroke:var(--surface);stroke-width:10;}
+  .ring-progress{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset 0.3s linear, stroke 0.4s;}
+
+  .ring-center{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+  }
+  #time-display{font-size:2.8rem;font-weight:800;font-family:'Courier New',monospace;letter-spacing:1px;}
+  #phase-label{font-size:0.78rem;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:1.5px;}
+  #session-counter{font-size:0.7rem;color:var(--muted);margin-top:4px;}
+
+  .controls{display:flex;gap:12px;margin-top:30px;}
+  .ctrl-btn{
+    border:none;border-radius:12px;padding:13px 28px;font-size:0.88rem;font-weight:700;
+    cursor:pointer;transition:all .15s;
+  }
+  .ctrl-btn.primary{background:linear-gradient(135deg,var(--work),#fbbf24);color:#1a0a05;}
+  .ctrl-btn.primary:hover{filter:brightness(1.1);transform:translateY(-1px);}
+  .ctrl-btn.ghost{background:var(--surface);border:1px solid var(--border);color:var(--ink);}
+  .ctrl-btn.ghost:hover{border-color:var(--muted);}
+
+  /* ── Settings ── */
+  .settings-toggle{
+    margin-top:24px;font-size:0.72rem;color:var(--muted);cursor:pointer;
+    text-decoration:underline;text-decoration-style:dotted;
+  }
+  .settings-panel{
+    display:none;width:100%;margin-top:18px;border-top:1px solid var(--border);padding-top:18px;
+  }
+  .settings-panel.open{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .setting-row label{font-size:0.68rem;color:var(--muted);display:block;margin-bottom:5px;}
+  .setting-row input[type=number]{
+    width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;
+    padding:7px 10px;color:var(--ink);font-size:0.8rem;outline:none;
+  }
+  .setting-row input[type=number]:focus{border-color:var(--work);}
+  .checkbox-row{display:flex;align-items:center;gap:8px;font-size:0.74rem;color:var(--muted);grid-column:1/-1;}
+
+  /* ── Sidebar ── */
+  .side-card{
+    background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+    padding:18px 20px;margin-bottom:18px;
+  }
+  .side-card h3{font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;}
+
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .stat-box{background:var(--surface);border-radius:10px;padding:12px;text-align:center;}
+  .stat-n{font-size:1.3rem;font-weight:800;color:var(--work);}
+  .stat-l{font-size:0.62rem;color:var(--muted);margin-top:3px;text-transform:uppercase;}
+
+  #week-chart{width:100%;height:100px;}
+
+  .log-list{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+  .log-item{
+    display:flex;align-items:center;gap:8px;font-size:0.72rem;color:var(--muted);
+    padding:6px 0;border-bottom:1px solid var(--border);
+  }
+  .log-item:last-child{border-bottom:none;}
+  .log-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .log-dot.work{background:var(--work);}
+  .log-dot.short{background:var(--short);}
+  .log-dot.long{background:var(--long);}
+  .log-time{margin-left:auto;font-size:0.65rem;}
+  #empty-log{font-size:0.72rem;color:var(--muted);text-align:center;padding:20px 0;}
+
+  .clear-log{
+    margin-top:10px;width:100%;background:none;border:1px solid var(--border);
+    border-radius:8px;padding:7px;color:var(--muted);font-size:0.7rem;cursor:pointer;
+  }
+  .clear-log:hover{border-color:var(--work);color:var(--work);}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="logo">⏱</div>
+    <div>
+      <h1>FocusRing</h1>
+      <p>Pomodoro timer · session log · weekly focus chart</p>
+    </div>
+    <button class="mute-btn" id="mute-btn" onclick="toggleMute()" title="Toggle sound">🔊</button>
+  </header>
+
+  <div class="layout">
+    <!-- Timer -->
+    <div class="timer-card">
+      <div class="phase-tabs">
+        <div class="phase-tab work" id="tab-work" onclick="switchPhase('work')">Focus</div>
+        <div class="phase-tab short" id="tab-short" onclick="switchPhase('short')">Short Break</div>
+        <div class="phase-tab long" id="tab-long" onclick="switchPhase('long')">Long Break</div>
+      </div>
+
+      <div class="ring-wrap">
+        <svg width="280" height="280" viewBox="0 0 280 280">
+          <circle class="ring-bg" cx="140" cy="140" r="125"/>
+          <circle class="ring-progress" id="ring" cx="140" cy="140" r="125"/>
+        </svg>
+        <div class="ring-center">
+          <div id="time-display">25:00</div>
+          <div id="phase-label">Focus</div>
+          <div id="session-counter">Session 1 of 4</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="ctrl-btn primary" id="start-btn" onclick="toggleTimer()">Start</button>
+        <button class="ctrl-btn ghost" onclick="resetTimer()">Reset</button>
+        <button class="ctrl-btn ghost" onclick="skipPhase()">Skip</button>
+      </div>
+
+      <div class="settings-toggle" onclick="toggleSettings()">⚙ Settings</div>
+      <div class="settings-panel" id="settings-panel">
+        <div class="setting-row">
+          <label>Focus (minutes)</label>
+          <input type="number" id="set-work" value="25" min="1" max="120" onchange="updateSettings()"/>
+        </div>
+        <div class="setting-row">
+          <label>Short break (minutes)</label>
+          <input type="number" id="set-short" value="5" min="1" max="60" onchange="updateSettings()"/>
+        </div>
+        <div class="setting-row">
+          <label>Long break (minutes)</label>
+          <input type="number" id="set-long" value="15" min="1" max="60" onchange="updateSettings()"/>
+        </div>
+        <div class="setting-row">
+          <label>Sessions before long break</label>
+          <input type="number" id="set-cycles" value="4" min="2" max="10" onchange="updateSettings()"/>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="set-autostart" onchange="updateSettings()"/>
+          <label for="set-autostart" style="margin:0">Auto-start next phase</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div>
+      <div class="side-card">
+        <h3>Today</h3>
+        <div class="stat-grid">
+          <div class="stat-box"><div class="stat-n" id="s-sessions">0</div><div class="stat-l">Sessions</div></div>
+          <div class="stat-box"><div class="stat-n" id="s-minutes">0</div><div class="stat-l">Focus mins</div></div>
+        </div>
+      </div>
+
+      <div class="side-card">
+        <h3>Last 7 Days</h3>
+        <canvas id="week-chart" width="280" height="100"></canvas>
+      </div>
+
+      <div class="side-card">
+        <h3>Session Log</h3>
+        <div class="log-list" id="log-list"></div>
+        <button class="clear-log" onclick="clearLog()">Clear log</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const DURATIONS = { work: 25, short: 5, long: 15 };
+  let settings = JSON.parse(localStorage.getItem('focusring_settings') || 'null') || {
+    work: 25, short: 5, long: 15, cycles: 4, autostart: false, muted: false
+  };
+  let log = JSON.parse(localStorage.getItem('focusring_log') || '[]');
+
+  let phase = 'work';
+  let sessionNum = 1;
+  let remaining = settings.work * 60;
+  let totalDuration = settings.work * 60;
+  let running = false;
+  let timerId = null;
+
+  const RING_RADIUS = 125;
+  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+  const PHASE_COLORS = { work: '#f4654a', short: '#22c3a6', long: '#7c8cf8' };
+
+  document.getElementById('ring').style.strokeDasharray = RING_CIRCUMFERENCE;
+
+  // ── Audio beep (Web Audio API, no external files) ──
+  function beep() {
+    if (settings.muted) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.5);
+    } catch(e) {}
+  }
+
+  function toggleMute() {
+    settings.muted = !settings.muted;
+    document.getElementById('mute-btn').textContent = settings.muted ? '🔇' : '🔊';
+    saveSettings();
+  }
+  document.getElementById('mute-btn').textContent = settings.muted ? '🔇' : '🔊';
+
+  function saveSettings() { localStorage.setItem('focusring_settings', JSON.stringify(settings)); }
+  function saveLog() { localStorage.setItem('focusring_log', JSON.stringify(log)); }
+
+  function updateSettings() {
+    settings.work = +document.getElementById('set-work').value || 25;
+    settings.short = +document.getElementById('set-short').value || 5;
+    settings.long = +document.getElementById('set-long').value || 15;
+    settings.cycles = +document.getElementById('set-cycles').value || 4;
+    settings.autostart = document.getElementById('set-autostart').checked;
+    saveSettings();
+    if (!running) resetTimer();
+  }
+
+  function toggleSettings() {
+    document.getElementById('settings-panel').classList.toggle('open');
+  }
+
+  function syncSettingsInputs() {
+    document.getElementById('set-work').value = settings.work;
+    document.getElementById('set-short').value = settings.short;
+    document.getElementById('set-long').value = settings.long;
+    document.getElementById('set-cycles').value = settings.cycles;
+    document.getElementById('set-autostart').checked = settings.autostart;
+  }
+  syncSettingsInputs();
+
+  function phaseMinutes(p) { return settings[p]; }
+
+  function switchPhase(p) {
+    pauseTimer();
+    phase = p;
+    remaining = phaseMinutes(p) * 60;
+    totalDuration = remaining;
+    render();
+  }
+
+  function formatTime(sec) {
+    const m = Math.floor(sec / 60).toString().padStart(2,'0');
+    const s = (sec % 60).toString().padStart(2,'0');
+    return `${m}:${s}`;
+  }
+
+  function render() {
+    document.getElementById('time-display').textContent = formatTime(remaining);
+    const labels = { work: 'Focus', short: 'Short Break', long: 'Long Break' };
+    document.getElementById('phase-label').textContent = labels[phase];
+    document.getElementById('session-counter').textContent = `Session ${sessionNum} of ${settings.cycles}`;
+
+    document.querySelectorAll('.phase-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + phase).classList.add('active');
+
+    const ring = document.getElementById('ring');
+    const progress = 1 - (remaining / totalDuration);
+    ring.style.stroke = PHASE_COLORS[phase];
+    ring.style.strokeDashoffset = RING_CIRCUMFERENCE * (1 - progress);
+
+    document.getElementById('start-btn').textContent = running ? 'Pause' : 'Start';
+
+    if (running) {
+      document.title = `${formatTime(remaining)} · ${labels[phase]} — FocusRing`;
+    } else {
+      document.title = 'FocusRing';
+    }
+
+    updateStats();
+    renderLog();
+    renderChart();
+  }
+
+  function toggleTimer() {
+    running ? pauseTimer() : startTimer();
+  }
+
+  function startTimer() {
+    running = true;
+    timerId = setInterval(tick, 1000);
+    render();
+  }
+
+  function pauseTimer() {
+    running = false;
+    clearInterval(timerId);
+    render();
+  }
+
+  function resetTimer() {
+    pauseTimer();
+    remaining = phaseMinutes(phase) * 60;
+    totalDuration = remaining;
+    render();
+  }
+
+  function tick() {
+    remaining--;
+    if (remaining <= 0) {
+      completePhase();
+    } else {
+      render();
+    }
+  }
+
+  function completePhase() {
+    beep();
+
+    // Log completed phase
+    if (phase === 'work') {
+      log.push({ type: 'work', minutes: settings.work, ts: Date.now() });
+    } else {
+      log.push({ type: phase, minutes: phaseMinutes(phase), ts: Date.now() });
+    }
+    saveLog();
+
+    // Determine next phase
+    if (phase === 'work') {
+      if (sessionNum >= settings.cycles) {
+        phase = 'long';
+        sessionNum = 1;
+      } else {
+        phase = 'short';
+        sessionNum++;
+      }
+    } else {
+      phase = 'work';
+    }
+
+    remaining = phaseMinutes(phase) * 60;
+    totalDuration = remaining;
+
+    pauseTimer();
+    if (settings.autostart) startTimer();
+    else render();
+  }
+
+  function skipPhase() {
+    pauseTimer();
+    completePhaseSkip();
+  }
+
+  function completePhaseSkip() {
+    // Same transition logic as completePhase, but no log entry (it wasn't finished)
+    if (phase === 'work') {
+      if (sessionNum >= settings.cycles) { phase = 'long'; sessionNum = 1; }
+      else { phase = 'short'; sessionNum++; }
+    } else {
+      phase = 'work';
+    }
+    remaining = phaseMinutes(phase) * 60;
+    totalDuration = remaining;
+    render();
+  }
+
+  // ── Stats ──
+  function isToday(ts) {
+    const d = new Date(ts), t = new Date();
+    return d.toDateString() === t.toDateString();
+  }
+
+  function updateStats() {
+    const todayWork = log.filter(e => e.type === 'work' && isToday(e.ts));
+    document.getElementById('s-sessions').textContent = todayWork.length;
+    document.getElementById('s-minutes').textContent = todayWork.reduce((sum,e) => sum + e.minutes, 0);
+  }
+
+  function renderLog() {
+    const el = document.getElementById('log-list');
+    if (!log.length) { el.innerHTML = '<div id="empty-log">No sessions yet</div>'; return; }
+    const labels = { work: 'Focus', short: 'Short Break', long: 'Long Break' };
+    el.innerHTML = log.slice(-30).reverse().map(e => `
+      <div class="log-item">
+        <span class="log-dot ${e.type}"></span>
+        <span>${labels[e.type]} · ${e.minutes}m</span>
+        <span class="log-time">${new Date(e.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
+      </div>
+    `).join('');
+  }
+
+  function clearLog() {
+    if (!confirm('Clear all session history?')) return;
+    log = [];
+    saveLog();
+    render();
+  }
+
+  // ── Weekly chart (canvas, no library) ──
+  function renderChart() {
+    const canvas = document.getElementById('week-chart');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(d);
+    }
+
+    const totals = days.map(d => {
+      return log.filter(e => e.type === 'work' && new Date(e.ts).toDateString() === d.toDateString())
+                 .reduce((sum, e) => sum + e.minutes, 0);
+    });
+
+    const max = Math.max(...totals, 25); // at least one session height for scale
+    const barWidth = canvas.width / 7 - 8;
+    const chartHeight = canvas.height - 22;
+
+    totals.forEach((mins, i) => {
+      const x = i * (canvas.width / 7) + 4;
+      const h = Math.max(2, (mins / max) * chartHeight);
+      const y = chartHeight - h;
+
+      const grad = ctx.createLinearGradient(0, y, 0, chartHeight);
+      grad.addColorStop(0, '#f4654a');
+      grad.addColorStop(1, '#fbbf24');
+      ctx.fillStyle = mins > 0 ? grad : '#222438';
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(x, y, barWidth, h, 3) : ctx.rect(x, y, barWidth, h);
+      ctx.fill();
+
+      ctx.fillStyle = '#666b8a';
+      ctx.font = '9px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText(days[i].toLocaleDateString([], {weekday:'short'})[0], x + barWidth/2, canvas.height - 6);
+    });
+  }
+
+  render();
+</script>
+</body>
+</html>
